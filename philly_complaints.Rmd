@@ -1,0 +1,59 @@
+---
+title: "Complaints Against Philly Police"
+author: "Yao Yu"
+date: "6/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+
+philly <- read_csv("ppd_complaints.csv", col_types = cols(
+  complaint_id = col_character(),
+  date_received = col_date(format = ""),
+  district_occurrence = col_character(),
+  general_cap_classification = col_character(),
+  summary = col_character()
+))
+
+demographics <- read_csv("ppd_complainant_demographics.csv", col_types = cols(
+  complaint_id = col_character(),
+  complainant_sex = col_character(),
+  complainant_race = col_character(),
+  complainant_age = col_double()
+))
+
+philly_full <- philly %>%
+  full_join(demographics, by = "complaint_id")
+```
+
+```{r}
+
+philly_clean <- philly_full %>%
+  mutate(year = format(as.Date(date_received, format = "%Y-%m-%d"), "%Y")) %>%
+  select(year, district_occurrence, general_cap_classification, complainant_race) %>%
+  mutate(race = case_when(
+    complainant_race == "black" ~ "black",
+    complainant_race == "white" ~ "white",
+    TRUE ~ "other/NA"
+  )) %>%
+  drop_na(general_cap_classification) %>%
+  group_by(race) %>%
+  count(general_cap_classification)
+
+philly_clean %>%
+  ggplot(aes(x = reorder(general_cap_classification, n), y = n, fill = reorder(race, -n))) +
+  geom_col() +
+  coord_flip() +
+  theme_classic() +
+  labs(title = "Number of Complaints Made Against Philly Police by Race",
+       subtitle = "from April 2015 to March 2020",
+       x = "Type of Complaint",
+       y = "",
+       fill = "Race",
+       caption = "Source: City of Philadelphia via OpenDataPhilly")
+
+```
+
