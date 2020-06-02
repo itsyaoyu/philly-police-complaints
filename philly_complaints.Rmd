@@ -43,7 +43,7 @@ philly_clean <- philly_full %>%
   group_by(race) %>%
   count(general_cap_classification)
 
-philly_clean %>%
+complaints_by_race <- philly_clean %>%
   ggplot(aes(x = reorder(general_cap_classification, n), y = n, fill = reorder(race, -n))) +
   geom_col() +
   coord_flip() +
