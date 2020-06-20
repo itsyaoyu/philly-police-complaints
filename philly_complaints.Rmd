@@ -11,10 +11,11 @@ knitr::opts_chunk$set(echo = TRUE)
 # Loading in necessary packages
 
 library(tidyverse)
+library(scales)
 
 # Reading in complaints data with details: https://www.opendataphilly.org/dataset/police-complaints
 
-philly <- read_csv("ppd_complaints.csv", col_types = cols(
+philly <- read_csv("data/ppd_complaints.csv", col_types = cols(
   complaint_id = col_character(),
   date_received = col_date(format = ""),
   district_occurrence = col_character(),
@@ -24,7 +25,7 @@ philly <- read_csv("ppd_complaints.csv", col_types = cols(
 
 # Reading in complaints data with demographics
 
-demographics <- read_csv("ppd_complainant_demographics.csv", col_types = cols(
+demographics <- read_csv("data/ppd_complainant_demographics.csv", col_types = cols(
   complaint_id = col_character(),
   complainant_sex = col_character(),
   complainant_race = col_character(),
@@ -33,7 +34,7 @@ demographics <- read_csv("ppd_complainant_demographics.csv", col_types = cols(
 
 # Reading in complaints data disciplines
 
-disciplines <- read_csv("ppd_complaint_disciplines.csv", col_types = cols(
+disciplines <- read_csv("data/ppd_complaint_disciplines.csv", col_types = cols(
   complaint_id = col_character(),
   officer_id = col_double(),
   po_race = col_character(),
@@ -61,7 +62,7 @@ philly_full <- philly %>%
 
 philly_clean <- philly_full %>%
   mutate(year = format(as.Date(date_received, format = "%Y-%m-%d"), "%Y")) %>%
-  select(year, district_occurrence, general_cap_classification, complainant_race) %>%
+  select(year, district_occurrence, general_cap_classification, complainant_race, investigative_findings, disciplinary_findings, officer_id) %>%
   mutate(race = case_when(
     complainant_race == "black" ~ "black",
     complainant_race == "white" ~ "white",
@@ -95,6 +96,12 @@ complaints_by_category_race <- data_category_race %>%
 
 complaints_by_category_race
 
+# Code to save image into png
+
+# png("graphics/complaints_by_category_race.png", units="in", width=8, height=5, res=300)
+# print(complaints_by_category_race)
+# dev.off()
+
 ```
 
 ```{r graph 2}
@@ -120,9 +127,72 @@ complaints_by_year_race <- data_year_race %>%
 
 complaints_by_year_race
 
+# Code to save image into png
+
+# png("graphics/complaints_by_year_race.png", units="in", width=6, height=4, res=300)
+# print(complaints_by_year_race)
+# dev.off()
+
 ```
 
 ```{r graph 3}
 
+# Preparing data for viz. Removing 4 NAs for investigative_findings.
+
+investigate <- philly_clean %>% 
+  count(investigative_findings) %>% 
+  drop_na() %>% 
+  mutate(prop = n / sum(n))
+
+# Graphing investigative findings
+
+investigative_findings <- investigate %>%
+  ggplot(aes(x = "", y = prop, fill = reorder(investigative_findings, -prop), label = paste(n, percent(prop), sep=" | "))) +
+  geom_col(width = 0.4) +
+  geom_text(size = 3, position = position_stack(vjust = 0.5)) +
+  theme_void() +
+  labs(title = "Investigative Findings of Complaints",
+       subtitle = "from May 2015 to April 2020",
+       x = "",
+       y = "",
+       fill = "",
+       caption = "Source: City of Philadelphia via OpenDataPhilly")
+
+# Code to save image into png
+
+# png("graphics/investigative_findings.png", units="in", width=4.25, height=5, res=300)
+# print(investigative_findings)
+# dev.off()
+```
+
+```{r graph 4}
+
+# Preparing data for viz. Removing 4 NAs for investigative_findings.
+
+discipline <- philly_clean %>% 
+  filter(disciplinary_findings != "Not Applicable") %>% 
+  count(disciplinary_findings) %>% 
+  drop_na() %>% 
+  mutate(prop = n / sum(n))
+
+# Graphing disciplinary action
+
+disciplinary_findings <- discipline %>%
+  ggplot(aes(x = "", y = prop, fill = reorder(disciplinary_findings, -prop), label = paste(n, percent(prop), sep=" | "))) +
+  geom_col(width = 0.4) +
+  geom_text(size = 3, position = position_stack(vjust = 0.5)) +
+  theme_void() +
+  labs(title = "Disciplinary Findings of Complaints",
+       subtitle = "from May 2015 to April 2020",
+       x = "",
+       y = "",
+       fill = "",
+       caption = "Source: City of Philadelphia via OpenDataPhilly")
+
+# Code to save image into png
+
+# png("graphics/disciplinary_findings.png", units="in", width=4.25, height=5, res=300)
+# print(disciplinary_findings)
+# dev.off()
 ```
 
