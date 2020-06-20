@@ -3,6 +3,8 @@ Project Summary
 ------
 Mini project looking into the numebr of complaints against police in Philly. Data is avaliable online through the City of Philadelphia's [Open Data Portal](https://www.opendataphilly.org/dataset/police-complaints)
 
+![](graphics/complaints_by_category_race.png)<!-- -->
+
 Repo Guide
 ------
 + /data : latest data from the [Open Data Portal](https://www.opendataphilly.org/dataset/police-complaints) as of June 20, 2020
