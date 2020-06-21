@@ -248,7 +248,7 @@ disciplinary_findings
 
 ```{r table 1}
 
-# Creating a table to show the officers with the most compalints by race
+# Creating a table to show the officers with the most complaints by race
 
 most_complaints <- philly_clean %>%
   group_by(complaint_id) %>%
