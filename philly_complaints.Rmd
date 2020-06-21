@@ -6,16 +6,17 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 
 # Loading in necessary packages
 
 library(tidyverse)
 library(scales)
+library(reactable)
 
 # Reading in complaints data with details: https://www.opendataphilly.org/dataset/police-complaints
 
-philly <- read_csv("data/ppd_complaints.csv", col_types = cols(
+complaints <- read_csv("data/ppd_complaints.csv", col_types = cols(
   complaint_id = col_character(),
   date_received = col_date(format = ""),
   district_occurrence = col_character(),
@@ -47,9 +48,10 @@ disciplines <- read_csv("data/ppd_complaint_disciplines.csv", col_types = cols(
 
 # Joining complaints with demographics and disciplines by complaint_id
 
-philly_full <- philly %>%
-  full_join(demographics, by = "complaint_id") %>%
-  full_join(disciplines, by = "complaint_id")
+philly_full <- complaints %>%
+  inner_join(demographics, by = "complaint_id") %>%
+  inner_join(disciplines, by = "complaint_id")
+
 ```
 
 ```{r cleaning}
@@ -62,23 +64,53 @@ philly_full <- philly %>%
 
 philly_clean <- philly_full %>%
   mutate(year = format(as.Date(date_received, format = "%Y-%m-%d"), "%Y")) %>%
-  select(year, district_occurrence, general_cap_classification, complainant_race, investigative_findings, disciplinary_findings, officer_id) %>%
+  select(complaint_id, year, district_occurrence, general_cap_classification, complainant_race, investigative_findings, disciplinary_findings, officer_id, po_race) %>%
   mutate(race = case_when(
-    complainant_race == "black" ~ "black",
-    complainant_race == "white" ~ "white",
-    TRUE ~ "other/NA"
+    complainant_race == "black" ~ "Black",
+    complainant_race == "white" ~ "White",
+    TRUE ~ "Other/NA"
+  )) %>%
+  mutate(po_race = case_when(
+    po_race == "asian" ~ "Asian",
+    po_race == "black" ~ "Black",
+    po_race == "indian" ~ "Indian",
+    po_race == "latino" ~ "Latino",
+    po_race == "white" ~ "White",
+    TRUE ~ "Other/NA"
   )) %>% 
   drop_na(general_cap_classification)
+
+# Further cleaning to remove bad data. Originally discovered this issue where
+# complaint_id had multiple race variables. Likely due to human error in
+# entering the data. They will be filtered out.
+
+race_duplicates <- philly_clean %>%
+  group_by(complaint_id) %>%
+  count(race, general_cap_classification) %>% 
+  select(-n) %>% 
+  count() %>% 
+  arrange(desc(n)) %>% 
+  filter(n != 1)
+
+# Removing the complaint_id that had errors from full dataset
+
+philly_clean <- philly_clean %>% 
+  filter(!complaint_id %in% race_duplicates$complaint_id)
 
 ```
 
 ```{r graph 1}
 
-# Preparing data for viz
+# Preparing data for viz. Cleaning data so that each complaint_id is unique.
 
-data_category_race <- philly_clean %>% 
-  group_by(race) %>%
-  count(general_cap_classification)
+data_category_race <- philly_clean %>%
+  group_by(complaint_id) %>%
+  count(race, general_cap_classification) %>% 
+  select(-n) %>% 
+  ungroup() %>% 
+  group_by(general_cap_classification, race) %>% 
+  count()
+  
 
 # First viz breaks down all complaints into categories and race.
 
@@ -106,9 +138,13 @@ complaints_by_category_race
 
 ```{r graph 2}
 
-# Preparing data for viz
+# Preparing data for viz. Cleaning data so that each complaint_id is unique.
 
-data_year_race <- philly_clean %>% 
+data_year_race <- philly_clean %>%
+  group_by(complaint_id) %>%
+  count(race, year) %>% 
+  select(-n) %>% 
+  ungroup() %>% 
   group_by(year, race) %>% 
   count()
 
@@ -137,11 +173,16 @@ complaints_by_year_race
 
 ```{r graph 3}
 
-# Preparing data for viz. Removing 4 NAs for investigative_findings.
+# Preparing data for viz. Cleaning data so that for each complaint, an officer
+# only has a unique investigative_finding once.
 
-investigate <- philly_clean %>% 
+investigate <- philly_clean %>%
+  group_by(complaint_id) %>%
+  count(officer_id, investigative_findings) %>% 
+  drop_na(officer_id) %>%
+  select(-n) %>% 
+  ungroup() %>% 
   count(investigative_findings) %>% 
-  drop_na() %>% 
   mutate(prop = n / sum(n))
 
 # Graphing investigative findings
@@ -152,11 +193,13 @@ investigative_findings <- investigate %>%
   geom_text(size = 3, position = position_stack(vjust = 0.5)) +
   theme_void() +
   labs(title = "Investigative Findings of Complaints",
-       subtitle = "from May 2015 to April 2020",
+       subtitle = "per officer from May 2015 to April 2020",
        x = "",
        y = "",
        fill = "",
        caption = "Source: City of Philadelphia via OpenDataPhilly")
+
+investigative_findings
 
 # Code to save image into png
 
@@ -167,12 +210,17 @@ investigative_findings <- investigate %>%
 
 ```{r graph 4}
 
-# Preparing data for viz. Removing 4 NAs for investigative_findings.
+# Preparing data for viz. Cleaning data so that for each complaint, an officer
+# only has a unique disciplinary_findings once.
 
-discipline <- philly_clean %>% 
+discipline <- philly_clean %>%
+  group_by(complaint_id) %>%
+  count(officer_id, disciplinary_findings) %>% 
+  drop_na(officer_id) %>%
   filter(disciplinary_findings != "Not Applicable") %>% 
+  select(-n) %>% 
+  ungroup() %>% 
   count(disciplinary_findings) %>% 
-  drop_na() %>% 
   mutate(prop = n / sum(n))
 
 # Graphing disciplinary action
@@ -189,10 +237,46 @@ disciplinary_findings <- discipline %>%
        fill = "",
        caption = "Source: City of Philadelphia via OpenDataPhilly")
 
+disciplinary_findings
+
 # Code to save image into png
 
 # png("graphics/disciplinary_findings.png", units="in", width=4.25, height=5, res=300)
 # print(disciplinary_findings)
 # dev.off()
+```
+
+```{r table 1}
+
+# Creating a table to show the officers with the most compalints by race
+
+most_complaints <- philly_clean %>%
+  group_by(complaint_id) %>%
+  count(officer_id, po_race, race) %>% 
+  select(-n) %>% 
+  ungroup() %>% 
+  group_by(officer_id) %>%
+  count(po_race, race) %>%
+  arrange(desc(n)) %>%
+  drop_na() %>% 
+  mutate(officer_id = as.character(officer_id))
+
+reactable(
+  most_complaints, 
+  columns = list(
+    officer_id = colDef(name = "Officer ID"),
+    po_race = colDef(name = "Police Officer Race"),
+    race = colDef(name = "Complaint Filer Race"),
+    n = colDef(name = "Total Complaints")),
+  defaultColDef = colDef(
+    header = function(value) gsub(".", " ", value, fixed = TRUE),
+    cell = function(value) format(value, nsmall = 1),
+    align = "center",
+    minWidth = 70,
+    headerStyle = list(background = "#f7f7f8")
+  ),
+  bordered = TRUE,
+  highlight = TRUE)
+
 ```
 
