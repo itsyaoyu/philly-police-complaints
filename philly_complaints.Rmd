@@ -236,7 +236,7 @@ disciplinary_findings <- discipline %>%
        y = "",
        fill = "",
        caption = "Source: City of Philadelphia via OpenDataPhilly") +
-  scale_fill_manual(values=c("#17b2b7", "darkorange1", "brown2", "chartreuse3"))
+  scale_fill_manual(values=c("#00BFC4", "#C77CFF", "#7CAE00", "#F8766D"))
 
 disciplinary_findings
 
