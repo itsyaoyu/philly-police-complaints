@@ -298,9 +298,9 @@ reactable(
     officer_id = colDef(name = "Officer ID"),
     po_race = colDef(name = "Police Officer Race"),
     race = colDef(name = "Complaint Filer Race"),
-    n = colDef(name = "Total Complaints"),
-    training = colDef(name = "Training/Counseling"),
-    race = colDef(name = "Guilty Finding")),
+    n = colDef(name = "Total Complaints by Race"),
+    training = colDef(name = "Training/Counseling Findings"),
+    guilty = colDef(name = "Guilty Findings")),
   defaultColDef = colDef(
     header = function(value) gsub(".", " ", value, fixed = TRUE),
     cell = function(value) format(value, nsmall = 1),
