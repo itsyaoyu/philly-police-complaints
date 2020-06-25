@@ -254,13 +254,43 @@ disciplinary_findings
 most_complaints <- philly_clean %>%
   group_by(complaint_id) %>%
   count(officer_id, po_race, race) %>% 
+  drop_na(officer_id) %>%
   select(-n) %>% 
   ungroup() %>% 
   group_by(officer_id) %>%
   count(po_race, race) %>%
   arrange(desc(n)) %>%
-  drop_na() %>% 
   mutate(officer_id = as.character(officer_id))
+
+# Finding training/counseling
+
+training_counseling <- philly_clean %>%
+  group_by(complaint_id) %>%
+  count(officer_id, disciplinary_findings) %>% 
+  drop_na(officer_id) %>%
+  filter(disciplinary_findings != "Not Applicable") %>% 
+  select(-n) %>% 
+  ungroup() %>% 
+  filter(disciplinary_findings == "Training/Counseling") %>% 
+  mutate(officer_id = as.character(officer_id))
+
+# Finding guilty
+
+guilty <- philly_clean %>%
+  group_by(complaint_id) %>%
+  count(officer_id, disciplinary_findings) %>% 
+  drop_na(officer_id) %>%
+  filter(disciplinary_findings != "Not Applicable") %>% 
+  select(-n) %>% 
+  ungroup() %>% 
+  filter(disciplinary_findings == "Guilty Finding") %>% 
+  mutate(officer_id = as.character(officer_id))
+
+# Adding in disciplinary finding per officer
+
+most_complaints <- most_complaints %>% 
+  mutate(training = map_int(officer_id, ~ training_counseling %>% filter(officer_id == .x) %>% nrow())) %>% 
+  mutate(guilty = map_int(officer_id, ~ guilty %>% filter(officer_id == .x) %>% nrow()))
 
 reactable(
   most_complaints, 
@@ -268,7 +298,9 @@ reactable(
     officer_id = colDef(name = "Officer ID"),
     po_race = colDef(name = "Police Officer Race"),
     race = colDef(name = "Complaint Filer Race"),
-    n = colDef(name = "Total Complaints")),
+    n = colDef(name = "Total Complaints"),
+    training = colDef(name = "Training/Counseling"),
+    race = colDef(name = "Guilty Finding")),
   defaultColDef = colDef(
     header = function(value) gsub(".", " ", value, fixed = TRUE),
     cell = function(value) format(value, nsmall = 1),
