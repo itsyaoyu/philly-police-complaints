@@ -120,7 +120,7 @@ complaints_by_category_race <- data_category_race %>%
   coord_flip() +
   theme_classic() +
   labs(title = "Number of Complaints Made Against Philly Police by Race",
-       subtitle = "split into categories from May 2015 to April 2020",
+       subtitle = "from May 2015 to April 2020",
        x = "Type of Complaint",
        y = "",
        fill = "Race",
@@ -155,7 +155,7 @@ complaints_by_year_race <- data_year_race %>%
   geom_col(position = "dodge") +
   theme_classic() +
   labs(title = "Number of Complaints Made Against Philly Police by Race",
-       subtitle = "yearly from May 2015 to April 2020",
+       subtitle = "from May 2015 to April 2020",
        x = "",
        y = "",
        fill = "Race",
